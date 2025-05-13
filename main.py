@@ -1,150 +1,179 @@
+# app.py
+
 import streamlit as st
-from sklearn.datasets import load_iris
-from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
+import numpy as np
+from sklearn import datasets
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Title and Introduction
-st.title("🔬 Interactive Machine Learning App: Iris Classifier")
-st.write("""
-Welcome! This app walks you through a complete machine learning workflow using the classic Iris dataset.
-You'll see how data is loaded, how features are selected, how a model is trained, and how predictions are made.
-Each step is explained in detail below.
-""")
+# --- Data Science and Machine Learning Concepts Explained ---
 
-# Step 1: Data Loading and Explanation
-st.header("Step 1: Load the Dataset")
-st.markdown("""
-We use the **Iris dataset**, a famous dataset in machine learning. It contains 150 samples of iris flowers,
-each described by four features:
-- Sepal length (cm)
-- Sepal width (cm)
-- Petal length (cm)
-- Petal width (cm)
+"""
+# 🌸 Iris Data Science & Machine Learning Explorer
 
-Each sample is labeled as one of three species: **setosa, versicolor, or virginica**.
-""")
-iris = load_iris()
-df = pd.DataFrame(iris.data, columns=iris.feature_names)
-st.dataframe(df.head(), use_container_width=True)
-st.markdown("""
-*Above: The first five rows of the dataset. Each row is a flower sample with its features.*
-""")
+This app demonstrates key concepts in **data science** and **machine learning** using Python and Streamlit.
 
-# Step 2: Data Exploration
-st.header("Step 2: Explore the Data")
-st.markdown("""
-Let's look at some basic statistics to understand the data better.
-""")
+---
+
+## What is Data Science?
+
+Data science is the process of extracting insights and knowledge from data. It involves:
+- Collecting data
+- Cleaning and preparing data
+- Analyzing and visualizing data
+- Building predictive models (machine learning)
+- Communicating results
+
+## What is Machine Learning?
+
+Machine learning is a subset of AI focused on building algorithms that can learn from data and make predictions or decisions without being explicitly programmed for each task[2][3][5][6].
+
+**Types of machine learning:**
+- **Supervised Learning:** Learn from labeled data (e.g., classification, regression)
+- **Unsupervised Learning:** Find patterns in unlabeled data (e.g., clustering)
+- **Reinforcement Learning:** Learn by trial and error
+
+In this app, we'll use **supervised learning** for classification.
+"""
+
+# --- LOAD DATA ---
+
+@st.cache_data
+def load_data():
+    iris = datasets.load_iris()
+    df = pd.DataFrame(
+        iris.data, columns=iris.feature_names
+    )
+    df['target'] = iris.target
+    df['target_name'] = df['target'].map(dict(enumerate(iris.target_names)))
+    return df, iris
+
+df, iris = load_data()
+
+# --- DATA EXPLORATION ---
+
+st.header("1. Data Exploration")
+
+st.write("The Iris dataset contains measurements for 150 iris flowers from 3 species.")
+st.dataframe(df.head())
+
+# Data summary
+st.subheader("Summary Statistics")
 st.write(df.describe())
 
-st.markdown("""
-- **Mean, min, and max** values help us understand the range of each feature.
-- This information is useful for setting up the input sliders in the next step.
+# --- DATA VISUALIZATION ---
+
+st.header("2. Data Visualization")
+
+st.write("Visualizing data helps us understand patterns and relationships.")
+
+# Pairplot
+st.subheader("Pairplot (Scatterplot Matrix)")
+fig = sns.pairplot(df, hue="target_name")
+st.pyplot(fig)
+
+# Correlation heatmap
+st.subheader("Feature Correlation Heatmap")
+fig2, ax2 = plt.subplots()
+sns.heatmap(df.iloc[:, :-2].corr(), annot=True, cmap="Blues", ax=ax2)
+st.pyplot(fig2)
+
+# --- MACHINE LEARNING PIPELINE ---
+
+st.header("3. Machine Learning Model")
+
+st.write("""
+Let's train a **Random Forest Classifier** to predict the iris species from the measurements.
+
+### Steps:
+1. **Split the data** into training and testing sets.
+2. **Train** the model on the training data.
+3. **Test** the model on unseen data.
+4. **Evaluate** the model's accuracy.
 """)
 
-# Step 3: User Input Widgets
-st.header("Step 3: Input Flower Features")
-st.markdown("""
-Use the sliders in the sidebar to set the features of a hypothetical iris flower.
-The model will use these values to predict the species.
-""")
-st.sidebar.header("Input Features")
-
-def user_input_features():
-    sepal_length = st.sidebar.slider(
-        'Sepal length (cm)',
-        float(df['sepal length (cm)'].min()),
-        float(df['sepal length (cm)'].max()),
-        float(df['sepal length (cm)'].mean())
-    )
-    sepal_width = st.sidebar.slider(
-        'Sepal width (cm)',
-        float(df['sepal width (cm)'].min()),
-        float(df['sepal width (cm)'].max()),
-        float(df['sepal width (cm)'].mean())
-    )
-    petal_length = st.sidebar.slider(
-        'Petal length (cm)',
-        float(df['petal length (cm)'].min()),
-        float(df['petal length (cm)'].max()),
-        float(df['petal length (cm)'].mean())
-    )
-    petal_width = st.sidebar.slider(
-        'Petal width (cm)',
-        float(df['petal width (cm)'].min()),
-        float(df['petal width (cm)'].max()),
-        float(df['petal width (cm)'].mean())
-    )
-    data = {
-        'sepal length (cm)': sepal_length,
-        'sepal width (cm)': sepal_width,
-        'petal length (cm)': petal_length,
-        'petal width (cm)': petal_width
-    }
-    features = pd.DataFrame(data, index=[0])
-    return features
-
-input_df = user_input_features()
-
-st.write("#### Your Selected Features")
-st.write(input_df)
-st.markdown("""
-*Above: The feature values you selected using the sliders.*
-""")
-
-# Step 4: Model Training
-st.header("Step 4: Train the Machine Learning Model")
-st.markdown("""
-We use a **Random Forest Classifier**, a popular machine learning algorithm that combines the results of multiple decision trees for better accuracy and robustness.
-
-- The model is trained on the entire Iris dataset.
-- It learns the relationship between the flower features and their species.
-""")
-clf = RandomForestClassifier()
-clf.fit(df, iris.target)
-st.success("The Random Forest model has been trained on the dataset.")
-
-# Step 5: Make Predictions
-st.header("Step 5: Make a Prediction")
-st.markdown("""
-Now, the trained model predicts the species of your hypothetical flower based on your input features.
-""")
-prediction = clf.predict(input_df)
-prediction_proba = clf.predict_proba(input_df)
-
-st.write(f"**Predicted species:** {iris.target_names[prediction][0].capitalize()}")
-st.write("**Prediction probabilities:**")
-proba_df = pd.DataFrame(
-    prediction_proba,
-    columns=[name.capitalize() for name in iris.target_names]
+# Feature selection
+features = st.multiselect(
+    "Choose features for model training:",
+    iris.feature_names,
+    default=iris.feature_names
 )
-st.write(proba_df)
+if len(features) < 2:
+    st.warning("Select at least 2 features.")
+else:
+    X = df[features]
+    y = df['target']
 
-# Step 6: Explain the Results
-st.header("Step 6: Understanding the Results")
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # Model training
+    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    clf.fit(X_train, y_train)
+
+    # Prediction
+    y_pred = clf.predict(X_test)
+
+    # Evaluation
+    acc = accuracy_score(y_test, y_pred)
+    st.subheader(f"Model Accuracy: {acc:.2f}")
+
+    st.text("Classification Report:")
+    st.text(classification_report(y_test, y_pred, target_names=iris.target_names))
+
+    # Confusion matrix
+    st.subheader("Confusion Matrix")
+    fig3, ax3 = plt.subplots()
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d",
+                xticklabels=iris.target_names, yticklabels=iris.target_names, cmap="Greens", ax=ax3)
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    st.pyplot(fig3)
+
+# --- USER PREDICTION ---
+
+st.header("4. Try It Yourself!")
+
+st.write("Input measurements and the model will predict the species:")
+
+user_input = []
+for feature in iris.feature_names:
+    val = st.number_input(f"{feature}", float(df[feature].min()), float(df[feature].max()), float(df[feature].mean()))
+    user_input.append(val)
+
+if st.button("Predict Species"):
+    user_pred = clf.predict([user_input])[0]
+    st.success(f"Predicted species: **{iris.target_names[user_pred].capitalize()}**")
+
+# --- FURTHER LEARNING ---
+
+st.header("5. Learn More")
+
 st.markdown("""
-- The **predicted species** is the one with the highest probability.
-- The **probabilities** show how confident the model is about each possible species.
-- If the probabilities are close, it means the model is less certain.
-- The model uses the patterns it learned during training to make these predictions.
-
-**Why Random Forest?**
-- Random Forest is robust to overfitting and works well with small datasets like Iris.
-- It can handle complex relationships between features and the target variable.
-
-**Next Steps:**
-- Try changing the sliders to see how different feature values affect the prediction.
-- This is similar to how data scientists test models with new data!
+- [W3Schools: Python Machine Learning][2]
+- [Real Python: Data Science Tutorials][6]
+- [DataCamp: Machine Learning with scikit-learn][4]
+- [Harvard: Data Science with Python][5]
 """)
 
-st.info("""
-This app demonstrates the full machine learning workflow:
-1. **Data Loading**
-2. **Exploration**
-3. **Feature Input**
-4. **Model Training**
-5. **Prediction**
-6. **Interpretation**
+# --- END OF APP ---
 
-You can use this template for your own datasets and models!
-""")
+"""
+---
+
+## Key Concepts Recap
+
+- **Data Science**: Extracting knowledge from data using programming, statistics, and domain expertise.
+- **Machine Learning**: Training algorithms to make predictions from data.
+- **Python Libraries**: pandas (data handling), matplotlib/seaborn (visualization), scikit-learn (machine learning).
+- **Model Evaluation**: Accuracy, confusion matrix, and classification report.
+
+Explore, visualize, and build models with your data!
+"""
+
